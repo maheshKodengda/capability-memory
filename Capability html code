@@ -1,0 +1,147 @@
+Here's a step-by-step guide to test the Qlik Sense Capability API for retrieving app refresh time:
+
+## 1. Set Up a Simple HTML Test Page
+
+Create an HTML file (e.g., `test-capability-api.html`) with the following content:
+
+```html
+<!DOCTYPE html>
+<html>
+<head>
+    <title>Qlik Sense Capability API Test</title>
+    <script src="https://your-qlik-server/resources/assets/external/requirejs/require.js"></script>
+</head>
+<body>
+    <h1>Qlik Sense App Refresh Time</h1>
+    <div>
+        <p>App Name: <span id="appName"></span></p>
+        <p>Last Reload Time: <span id="reloadTime"></span></p>
+    </div>
+    
+    <script>
+        // Configure requireJS to use Qlik Sense paths
+        require.config({
+            baseUrl: 'https://your-qlik-server/resources',
+            paths: {
+                qlik: 'js/qlik'
+            }
+        });
+        
+        // Use the Capability API
+        require(['js/qlik'], function(qlik) {
+            // Connect to your Qlik Sense server
+            const config = {
+                host: 'your-qlik-server',
+                prefix: '/',
+                port: window.location.port || 443,
+                isSecure: window.location.protocol === 'https:'
+            };
+            
+            console.log('Connecting with config:', config);
+            
+            // Open the app
+            const appId = 'your-app-id'; // Replace with your app ID
+            const app = qlik.openApp(appId, config);
+            
+            // Get the app layout which contains reload information
+            app.getAppLayout()
+                .then(function(layout) {
+                    console.log('App layout:', layout);
+                    
+                    // Display app name
+                    document.getElementById('appName').textContent = layout.qTitle;
+                    
+                    // Display last reload time
+                    const lastReloadTime = layout.qLastReloadTime;
+                    const formattedDate = lastReloadTime ? 
+                        new Date(lastReloadTime).toLocaleString() : 
+                        'Not available';
+                    
+                    document.getElementById('reloadTime').textContent = formattedDate;
+                })
+                .catch(function(error) {
+                    console.error('Error getting app layout:', error);
+                    document.getElementById('reloadTime').textContent = 'Error: ' + error.message;
+                });
+        });
+    </script>
+</body>
+</html>
+```
+
+## 2. Configure for Your Environment
+
+1. Replace `https://your-qlik-server` with your actual Qlik Sense server URL
+2. Replace `your-app-id` with the actual app ID you want to test
+3. If your Qlik Sense is configured with a virtual proxy, update the `prefix` value accordingly
+
+## 3. Test with Different Authentication Methods
+
+### For Qlik Sense Enterprise on Windows:
+
+1. **Windows Authentication (default)**:
+   - Host the HTML file on a web server that's configured for integrated Windows authentication
+   - Open the page in a browser where you're logged in with domain credentials
+
+2. **Header Authentication**:
+   - If using a virtual proxy with header authentication:
+   ```javascript
+   // Add to the config object
+   config.prefix = '/your-virtual-proxy-prefix/';
+   ```
+
+3. **Ticket Authentication**:
+   ```javascript
+   // Before opening the app, request a ticket
+   fetch('https://your-qlik-server/your-virtual-proxy/ticket?xrfkey=abcdefghijklmnop', {
+       method: 'POST',
+       headers: {
+           'Content-Type': 'application/json',
+           'X-Qlik-Xrfkey': 'abcdefghijklmnop'
+       },
+       body: JSON.stringify({ UserId: 'your-user-id' })
+   })
+   .then(response => response.json())
+   .then(data => {
+       // Add ticket to config
+       config.ticket = data.Ticket;
+       // Now open the app
+       const app = qlik.openApp(appId, config);
+       // Continue with the rest of your code...
+   });
+   ```
+
+## 4. Test on the Qlik Sense Server Directly
+
+For the simplest testing:
+
+1. Create the HTML file
+2. Upload it to the Qlik Sense server's content library
+3. Access it via: `https://your-qlik-server/content/your-file.html`
+
+This way, you're already authenticated in the Qlik Sense environment.
+
+## 5. Debugging Tips
+
+Add these console logs for troubleshooting:
+
+```javascript
+// Add to your script
+console.log('Qlik object:', qlik);
+
+// Test global API
+qlik.getGlobal().getDocList()
+    .then(function(docList) {
+        console.log('Available apps:', docList);
+    })
+    .catch(function(error) {
+        console.error('Error getting doc list:', error);
+    });
+
+// Check for connection issues
+app.model.enigmaModel.session.on('closed', function() {
+    console.error('WebSocket connection closed');
+});
+```
+
+If you're having trouble, you can also try the official Qlik Sense Mashup Editor to create and test the capability API before implementing it in your own application.​​​​​​​​​​​​​​​​
