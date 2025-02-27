@@ -1,0 +1,50 @@
+Yes, you can execute this code directly in your browser's developer console while on your Qlik Sense mashup page. Here's how to do it:
+
+1. Open your Qlik Sense mashup in the browser
+2. Open the browser's developer tools:
+   - Chrome/Edge: Press F12 or Ctrl+Shift+I (Cmd+Option+I on Mac)
+   - Firefox: Press F12 or Ctrl+Shift+I
+   - Safari: Enable developer tools in preferences first, then press Cmd+Option+I
+
+3. Navigate to the "Console" tab
+
+4. Paste and run this simplified version of the code (adjust parameters to match your environment):
+
+```javascript
+// You can run this in console to force WebSocket connection
+require(['js/qlik'], function(qlik) {
+  // Get the current config if your app is already defined
+  var app = qlik.currApp();
+  
+  // If that returns undefined, try opening the app explicitly
+  if (!app) {
+    var config = {
+      host: window.location.hostname,
+      prefix: '/qlik',  // Adjust based on your virtual proxy setup
+      isSecure: window.location.protocol === 'https:'
+    };
+    app = qlik.openApp('YOUR_APP_ID', config);
+  }
+  
+  // Get the first visualization to force connection
+  app.getList('sheet', function(reply) {
+    if (reply && reply.qAppObjectList && reply.qAppObjectList.qItems.length > 0) {
+      var firstSheet = reply.qAppObjectList.qItems[0].qInfo.qId;
+      console.log('Attempting to activate sheet:', firstSheet);
+      app.visualization.get('CurrentSelections').then(function(vis) {
+        console.log('Rendering selection bar to force connection');
+        vis.show('currentselections');
+      });
+    }
+  });
+  
+  console.log('WebSocket connection attempt initiated');
+});
+```
+
+A few notes:
+1. You may need to adjust the `prefix` based on your virtual proxy configuration
+2. Replace `'YOUR_APP_ID'` with your actual app ID if needed
+3. If you get a "require is not defined" error, your mashup might be using a different module loader - in that case, check which one by examining the network requests or page source
+
+This console approach is useful for diagnosing the issue, but for a permanent fix, you should incorporate the working solution into your mashup code.​​​​​​​​​​​​​​​​
